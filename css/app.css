@@ -26,7 +26,9 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { background: var(--ink); color: var(--fg); }
+/* No swipe sideways starts the browser's Back or Forward (Chrome's overscroll navigation): on a phone, a swipe that
+   steers off the ride board's side would otherwise leave the page. During a ride the board takes every touch. */
+html, body { background: var(--ink); color: var(--fg); overscroll-behavior: none; }
 body { font: 15px/1.5 var(--body); margin: 0; }
 .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 0 64px; }
 h1, h2, h3 { font-family: var(--display); text-transform: uppercase; letter-spacing: .02em; margin: 0; text-wrap: balance; line-height: .95; }

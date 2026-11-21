@@ -573,6 +573,15 @@ offline = false;
 }
 
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
+// A swipe sideways is nobody's, so it can't run on into Chrome's swipe to go Back or Forward (on a phone, a swipe that
+// steers off the board's side): the page doesn't overscroll, and the board takes every touch during a ride.
+{
+  const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' })).newPage();
+  await phone.goto(base);
+  assert.deepEqual(await phone.evaluate(() => ['html', 'body'].map(s => getComputedStyle(document.querySelector(s)).overscrollBehaviorX)), ['none', 'none'], 'the page should not overscroll sideways');
+  await phone.context().close();
+}
+
 // Offline, checked the junkdrawer house kit's way, from a server that answers like GitHub Pages: a browser may keep
 // each file for ten minutes, and asks again by its ETag. `net` is the connection: 'up', 'down' (the server drops every
 // connection) or 'stalled' (a plane's or a train's wifi: it takes each request and holds on to it). With `release`
