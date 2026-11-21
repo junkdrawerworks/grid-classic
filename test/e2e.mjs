@@ -582,6 +582,24 @@ assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems w
   await phone.context().close();
 }
 
+// On a phone's touch screen the ride board keeps 24 px from the screen's sides, where Android's back gesture starts,
+// so a swipe that starts at its edge doesn't set it off; so do the replay's scrubber and the turn buttons. With a
+// mouse the board keeps the page's own margin.
+for (const [width, height] of [[320, 568], [360, 740], [390, 844], [412, 915]]) {
+  const phone = await (await browser.newContext({ viewport: { width, height }, isMobile: true, hasTouch: true, serviceWorkers: 'block' })).newPage();
+  await phone.goto(base);
+  const sides = await phone.evaluate(() => ['exBoard', 'scrub', 'exLeft', 'exRight'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return [id, Math.min(r.left, innerWidth - r.right)]; }));
+  for (const [id, gap] of sides) assert.ok(gap >= 23.5, `#${id} is ${gap.toFixed(1)} px from the screen's side at ${width} px`);
+  assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `the page scrolls sideways at ${width} px`);
+  await phone.context().close();
+}
+{
+  const desk = await (await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' })).newPage();
+  await desk.goto(base);
+  assert.equal(await desk.evaluate(() => Math.round(document.getElementById('exBoard').getBoundingClientRect().left)), 21, 'with a mouse, the board keeps the page\'s margin');
+  await desk.context().close();
+}
+
 // Offline, checked the junkdrawer house kit's way, from a server that answers like GitHub Pages: a browser may keep
 // each file for ten minutes, and asks again by its ETag. `net` is the connection: 'up', 'down' (the server drops every
 // connection) or 'stalled' (a plane's or a train's wifi: it takes each request and holds on to it). With `release`

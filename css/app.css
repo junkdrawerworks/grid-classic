@@ -151,6 +151,9 @@ input[type=range] { flex: 1; min-width: 120px; accent-color: var(--chyron); }
 /* exhibition */
 .exwrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; border: 1px solid var(--line); background: var(--panel); }
 @media (max-width: 920px) { .exwrap { grid-template-columns: minmax(0, 1fr); } }
+/* On a phone's touch screen the ride board keeps 24 px from the screen's sides, clear of where Android's back gesture
+   starts, so a swipe begun at its edge steers rather than going Back. The page's margin and the border give 21 of it. */
+@media (pointer: coarse) and (max-width: 560px) { .exwrap { margin-inline: 3px; } }
 .exboard { position: relative; min-width: 0; } /* the panel shows either side of the board when it is narrowed to fit a phone held sideways, so its walls show */
 .exboard.riding { touch-action: none; } /* swipes steer during a ride; otherwise the board scrolls the page like the rest */
 canvas#exArena { display: block; width: 100%; height: auto; max-width: 100%; margin: 0 auto; } /* the script narrows it to fit a phone held sideways */
