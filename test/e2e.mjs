@@ -602,7 +602,8 @@ for (const [width, height] of [[320, 568], [360, 740], [390, 844], [412, 915]]) 
 
 // A Back that comes mid-swipe, or within a second of the browser taking a touch away from the ride board or the
 // scrubber (as Android's back gesture does to a swipe that starts near the screen's side), is a slip: the page stays,
-// and the ride carries on. A Back a while later leaves the page in one press, as it always has.
+// and the ride carries on. A Back a while later leaves the page in one press, as it always has: the guard's extra
+// history entry goes on when a finger touches the board or the scrubber and comes off a second after it lifts.
 {
   const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' })).newPage();
   const errors = [];
@@ -614,12 +615,16 @@ for (const [width, height] of [[320, 568], [360, 740], [390, 844], [412, 915]]) 
   await phone.selectOption('#exSpeed', '6');
   await phone.tap('#exGo');
   await phone.evaluate(() => { window.__kept = window.__ride(); });
+  const guarded = () => phone.evaluate(() => history.state?.__edgeGuard === true);
+  assert.equal(await guarded(), false, 'no extra history entry before the board is touched');
   const cdp = await phone.context().newCDPSession(phone);
   const r = await phone.locator('#exBoard').boundingBox();
   const x = r.x + r.width / 2, y = r.y + r.height / 2;
   const touch = (type, dx = 0, dy = 0) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' || type === 'touchCancel' ? [] : [{ x: x + dx, y: y + dy }] });
   // Back mid-swipe: the page stays.
-  await touch('touchStart'); await touch('touchMove', 0, -10);
+  await touch('touchStart');
+  assert.equal(await guarded(), true, 'a finger down on the board adds the extra entry');
+  await touch('touchMove', 0, -10);
   await phone.evaluate(() => history.back());
   await here('a Back mid-swipe should stay on the page');
   await touch('touchEnd');
@@ -634,7 +639,8 @@ for (const [width, height] of [[320, 568], [360, 740], [390, 844], [412, 915]]) 
   await here('a Back just after the scrubber\'s touch was taken should stay on the page');
   // A second later, Back leaves in one press.
   await phone.tap('.hero h1');
-  await phone.waitForTimeout(1100);
+  await phone.waitForTimeout(1300);
+  assert.equal(await guarded(), false, 'a second after the last touch, there is no extra entry to press Back through');
   await phone.goBack();
   await phone.waitForTimeout(300);
   assert.equal(phone.url(), base + 'icon.svg', 'a Back a while after should leave the page');
