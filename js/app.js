@@ -4,6 +4,7 @@
 // DATA and COPY come from js/data.js, the bots' code from js/bots.js; tournament/build.js writes both.
 import { DATA, COPY } from './data.js';
 import { BOTS } from './bots.js';
+import { guardEdges } from './edge-guard.js';
 
 const { W, H } = DATA;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
@@ -780,6 +781,10 @@ $('credits').innerHTML = (COPY.footer || []).map(p => `<p>${esc(p)}</p>`).join('
     if (touch) swipe(e.touches[0]);
   }, { passive: false });
   $('exBoard').addEventListener('touchend', e => { if (touch) swipe(e.changedTouches[0]); touch = null; });
+  // A Back that comes mid-swipe, or just after the browser took a touch away from the board or the replay's scrubber
+  // (as Android's back gesture does to a swipe that starts near the screen's side), is a slip: the page stays and
+  // the ride carries on. A Back meant to leave still leaves.
+  guardEdges({ surfaces: [$('exBoard'), $('scrub')] });
   $('exLeft').onclick = () => turn(-1);
   $('exRight').onclick = () => turn(1);
   $('exGo').onclick = start;

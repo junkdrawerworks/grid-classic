@@ -600,6 +600,48 @@ for (const [width, height] of [[320, 568], [360, 740], [390, 844], [412, 915]]) 
   await desk.context().close();
 }
 
+// A Back that comes mid-swipe, or within a second of the browser taking a touch away from the ride board or the
+// scrubber (as Android's back gesture does to a swipe that starts near the screen's side), is a slip: the page stays,
+// and the ride carries on. A Back a while later leaves the page in one press, as it always has.
+{
+  const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, serviceWorkers: 'block' })).newPage();
+  const errors = [];
+  phone.on('pageerror', e => errors.push(e.message));
+  const here = async why => { await phone.waitForTimeout(300); assert.equal(phone.url(), base, why); assert.equal(await phone.evaluate(() => window.__ride() === window.__kept), true, `${why}, on the same ride`); };
+  await phone.goto(base + 'icon.svg');
+  await phone.goto(base);
+  await phone.evaluate(() => document.fonts.ready);
+  await phone.selectOption('#exSpeed', '6');
+  await phone.tap('#exGo');
+  await phone.evaluate(() => { window.__kept = window.__ride(); });
+  const cdp = await phone.context().newCDPSession(phone);
+  const r = await phone.locator('#exBoard').boundingBox();
+  const x = r.x + r.width / 2, y = r.y + r.height / 2;
+  const touch = (type, dx = 0, dy = 0) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' || type === 'touchCancel' ? [] : [{ x: x + dx, y: y + dy }] });
+  // Back mid-swipe: the page stays.
+  await touch('touchStart'); await touch('touchMove', 0, -10);
+  await phone.evaluate(() => history.back());
+  await here('a Back mid-swipe should stay on the page');
+  await touch('touchEnd');
+  // The browser takes the touch, and a Back follows: the page stays.
+  await touch('touchStart'); await touch('touchMove', 0, -10); await touch('touchCancel');
+  await phone.evaluate(() => history.back());
+  await here('a Back just after the touch was taken should stay on the page');
+  // The same on the scrubber.
+  await phone.tap('.hero h1');
+  await phone.evaluate(() => { const s = document.getElementById('scrub'); s.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 9, bubbles: true })); s.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 9, bubbles: true })); });
+  await phone.goBack({ waitUntil: 'commit', timeout: 1000 }).catch(() => {});
+  await here('a Back just after the scrubber\'s touch was taken should stay on the page');
+  // A second later, Back leaves in one press.
+  await phone.tap('.hero h1');
+  await phone.waitForTimeout(1100);
+  await phone.goBack();
+  await phone.waitForTimeout(300);
+  assert.equal(phone.url(), base + 'icon.svg', 'a Back a while after should leave the page');
+  assert.deepEqual(errors, []);
+  await phone.context().close();
+}
+
 // Offline, checked the junkdrawer house kit's way, from a server that answers like GitHub Pages: a browser may keep
 // each file for ten minutes, and asks again by its ETag. `net` is the connection: 'up', 'down' (the server drops every
 // connection) or 'stalled' (a plane's or a train's wifi: it takes each request and holds on to it). With `release`

@@ -8,13 +8,13 @@ const root = new URL('..', import.meta.url);
 const read = p => readFile(new URL(p, root), 'utf8');
 const dataUri = async (path, type) => `data:${type};base64,${(await readFile(new URL(path, root))).toString('base64')}`;
 
-// The three modules become one script in its own scope: the imports and exports come out.
+// The four modules become one script in its own scope: the imports and exports come out.
 // data-single tells the page it's the one-file copy, which has no service worker to register.
-const strip = s => s.replace(/^import .*\n/gm, '').replace(/^export const /gm, 'const ');
+const strip = s => s.replace(/^import .*\n/gm, '').replace(/^export (const|function) /gm, '$1 ');
 const js = `document.documentElement.dataset.single = '';
 (() => {
 'use strict';
-${strip(await read('js/data.js'))}${strip(await read('js/bots.js'))}${strip(await read('js/app.js'))}})();
+${strip(await read('js/data.js'))}${strip(await read('js/bots.js'))}${strip(await read('js/edge-guard.js'))}${strip(await read('js/app.js'))}})();
 `.replace(/<\/script/gi, '<\\/script');
 
 // A single file can't point at other files, so the fonts and the icon go in as data: URIs,
